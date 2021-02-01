@@ -3,59 +3,99 @@ package TP1.PP;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class Main {
-	static final int MAX_T = 4;
-	static final int V_SIZE = 100;
-	static ConcurrentLinkedQueue<Integer> parcial = new ConcurrentLinkedQueue<>();
+	static final int M_X_SIZE = 100;
+	static final int M_Y_SIZE = 100;
 
 	public static void main(final String[] args) throws InterruptedException {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 
-		for (int i = 0; i < V_SIZE; i++) {
-			parcial.add(i);
-		}
+		final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> matrix = buildMatrix();
+		final List<Integer> array = buildArray();
+		final ConcurrentHashMap<Integer, List<Future<Integer>>> promisesDaMultiplicacao = new ConcurrentHashMap<>();
+		final ConcurrentHashMap<Integer, Future<Integer>> promisesDaSoma = new ConcurrentHashMap<>();
 
-		do {
+		matrix.forEach((index, pilha) -> {
+			final List<Callable<Integer>> tasks = createMultiplyTask(pilha, array.get(index));
 
-			final List<Callable<Integer>> tasks = buildParams(parcial);
+			promisesDaMultiplicacao.put(index, SubmitAllTask.run(threadPool, tasks));
+		});
 
-			submitAllTasks(threadPool, tasks);
+		promisesDaMultiplicacao.forEach((index, futures) -> {
+			final List<Integer> lista = futures.parallelStream().map(fut -> {
+				try {
+					return fut.get();
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+				return index;
+			}).collect(Collectors.toList());
 
-		} while (parcial.size() != 1);
+			final Future<Integer> futureDaSoma = threadPool.submit(new TaskSumAll(threadPool, lista));
+			promisesDaSoma.put(index, futureDaSoma);
+		});
 
-		System.out.println(parcial.toString());
-	}
-
-	private static void submitAllTasks(final ExecutorService threadPool, final List<Callable<Integer>> tasks) {
-		tasks.parallelStream().map(task -> threadPool.submit(task)).collect(Collectors.toList()).forEach(fut -> {
+		final List<Integer> result = promisesDaSoma.values().stream().map(fut -> {
 			try {
-				parcial.add(fut.get());
+				return fut.get();
 			} catch (InterruptedException | ExecutionException e) {
+				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		});
+			return null;
+		}).collect(Collectors.toList());
+
+		System.out.println(result.toString());
+		threadPool.shutdown();
 	}
 
-	static List<Callable<Integer>> buildParams(final ConcurrentLinkedQueue<Integer> a) {
+	private static ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> buildMatrix() {
+		final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> matrix = new ConcurrentHashMap<>();
+
+		for (int i = 0; i < M_X_SIZE; i++) {
+			final ConcurrentLinkedQueue<Integer> aux = new ConcurrentLinkedQueue<>();
+			for (int j = 0; j < M_Y_SIZE; j++) {
+				aux.add(1);
+			}
+
+			matrix.put(i, aux);
+		}
+
+		return matrix;
+	}
+
+	private static List<Integer> buildArray() {
+		final List<Integer> array = new ArrayList<Integer>();
+		for (int i = 0; i < M_X_SIZE; i++) {
+			array.add(2);
+		}
+
+		return array;
+	}
+
+	static List<Callable<Integer>> createMultiplyTask(final ConcurrentLinkedQueue<Integer> pilha, final int b) {
 		final List<Callable<Integer>> runables = new ArrayList<>();
 
 		do {
-			final Integer aux = a.poll();
-			final Integer aux2 = a.poll();
+			final Integer aux = pilha.poll();
+			final Integer aux2 = pilha.poll();
 
 			if (aux2 != null) {
-				runables.add((new Task(aux, aux2)));
+				runables.add(new TaskMultiply(aux, b));
+				runables.add(new TaskMultiply(aux2, b));
 			} else {
-				runables.add(new Task(aux));
+				runables.add(new TaskMultiply(aux));
 			}
 
-		} while (!a.isEmpty());
+		} while (!pilha.isEmpty());
 
 		return runables;
 	}
