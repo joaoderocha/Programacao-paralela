@@ -12,8 +12,8 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class Main {
-	static final int M_X_SIZE = 100;
-	static final int M_Y_SIZE = 100;
+	static final int M_X_SIZE = 10;
+	static final int M_Y_SIZE = 10;
 
 	public static void main(final String[] args) throws InterruptedException {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -30,6 +30,7 @@ public class Main {
 		});
 
 		promisesDaMultiplicacao.forEach((index, futures) -> {
+
 			final List<Integer> lista = futures.parallelStream().map(fut -> {
 				try {
 					return fut.get();
@@ -43,7 +44,7 @@ public class Main {
 			promisesDaSoma.put(index, futureDaSoma);
 		});
 
-		final List<Integer> result = promisesDaSoma.values().stream().map(fut -> {
+		final List<Integer> result = promisesDaSoma.values().parallelStream().map(fut -> {
 			try {
 				return fut.get();
 			} catch (InterruptedException | ExecutionException e) {

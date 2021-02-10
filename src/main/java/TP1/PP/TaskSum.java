@@ -10,7 +10,6 @@ public class TaskSum implements Callable<Integer> {
 	TaskSum(final int a, final int b) {
 		this.a = a;
 		this.b = b;
-
 	}
 
 	TaskSum(final int a) {
