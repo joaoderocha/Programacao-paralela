@@ -1,103 +1,34 @@
 package TP1.PP;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
 
 public class Main {
-	static final int M_X_SIZE = 10;
-	static final int M_Y_SIZE = 10;
+	private static Integer bodySize = 10;
+	private static Integer environmentXSize = 100;
 
-	public static void main(final String[] args) throws InterruptedException {
-		final ExecutorService threadPool = Executors.newCachedThreadPool();
+	public static void main(final String[] args) {
+		final Set<Body> bodys = new HashSet<>(bodySize);
 
-		final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> matrix = buildMatrix();
-		final List<Integer> array = buildArray();
-		final ConcurrentHashMap<Integer, List<Future<Integer>>> promisesDaMultiplicacao = new ConcurrentHashMap<>();
-		final ConcurrentHashMap<Integer, Future<Integer>> promisesDaSoma = new ConcurrentHashMap<>();
+		for (int i = 0; i < bodySize; i++) {
+			final Double x = (Double) randomNumber(environmentXSize);
 
-		matrix.forEach((index, pilha) -> {
-			final List<Callable<Integer>> tasks = createMultiplyTask(pilha, array.get(index));
-
-			promisesDaMultiplicacao.put(index, SubmitAllTask.run(threadPool, tasks));
-		});
-
-		promisesDaMultiplicacao.forEach((index, futures) -> {
-
-			final List<Integer> lista = futures.parallelStream().map(fut -> {
-				try {
-					return fut.get();
-				} catch (InterruptedException | ExecutionException e) {
-					e.printStackTrace();
-				}
-				return index;
-			}).collect(Collectors.toList());
-
-			final Future<Integer> futureDaSoma = threadPool.submit(new TaskSumAll(threadPool, lista));
-			promisesDaSoma.put(index, futureDaSoma);
-		});
-
-		final List<Integer> result = promisesDaSoma.values().parallelStream().map(fut -> {
-			try {
-				return fut.get();
-			} catch (InterruptedException | ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return null;
-		}).collect(Collectors.toList());
-
-		System.out.println(result.toString());
-		threadPool.shutdown();
-	}
-
-	private static ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> buildMatrix() {
-		final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<Integer>> matrix = new ConcurrentHashMap<>();
-
-		for (int i = 0; i < M_X_SIZE; i++) {
-			final ConcurrentLinkedQueue<Integer> aux = new ConcurrentLinkedQueue<>();
-			for (int j = 0; j < M_Y_SIZE; j++) {
-				aux.add(1);
-			}
-
-			matrix.put(i, aux);
+			bodys.add(new Body(null, null, null, null, i, null, i))
 		}
 
-		return matrix;
+
+		final Environment environment = Environment.getEnvironment(bodys);
 	}
 
-	private static List<Integer> buildArray() {
-		final List<Integer> array = new ArrayList<Integer>();
-		for (int i = 0; i < M_X_SIZE; i++) {
-			array.add(2);
-		}
+	public void runSystem(final Integer T, final Environment environment) {
 
-		return array;
 	}
 
-	static List<Callable<Integer>> createMultiplyTask(final ConcurrentLinkedQueue<Integer> pilha, final int b) {
-		final List<Callable<Integer>> runables = new ArrayList<>();
+	public Integer randomNumber(final Integer max) {
+		final Random rand = new Random();
 
-		do {
-			final Integer aux = pilha.poll();
-			final Integer aux2 = pilha.poll();
-
-			if (aux2 != null) {
-				runables.add(new TaskMultiply(aux, b));
-				runables.add(new TaskMultiply(aux2, b));
-			} else {
-				runables.add(new TaskMultiply(aux));
-			}
-
-		} while (!pilha.isEmpty());
-
-		return runables;
+		return rand.nextInt(max - (-1 * max)) - (-1 * max);
 	}
+
 }
