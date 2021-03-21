@@ -7,6 +7,8 @@ public class Body {
 	private Double y;
 	private Double Vx;
 	private Double Vy;
+	private Double VxGlobal;
+	private Double VyGlobal;
 	private Integer index;
 	private String name;
 	private Integer massa;
@@ -76,9 +78,52 @@ public class Body {
 		this.y = destino.getValue();
 	}
 
+	/**
+	 * Seta o vetor de direção
+	 *
+	 * @param direcao Direção a ser setada
+	 * @param isLocal Se o vetor é local ou não; Default = true
+	 */
+	public void setVector(final Pair<Double, Double> direcao, final boolean isLocal) {
+
+		if (isLocal) {
+			this.Vx = direcao.getKey();
+			this.Vy = direcao.getValue();
+			updateGlobalVec();
+		} else {
+			this.VxGlobal = direcao.getKey();
+			this.VyGlobal = direcao.getValue();
+			final Pair<Double, Double> p = Physics.globalToLocalVector(new Pair<Double, Double>(this.x, this.y),
+					direcao);
+			this.Vx = p.getKey();
+			this.Vy = p.getValue();
+		}
+
+	}
+
 	public void setVector(final Pair<Double, Double> direcao) {
+
 		this.Vx = direcao.getKey();
 		this.Vy = direcao.getValue();
+		updateGlobalVec();
+
+	}
+
+	/**
+	 * Move o corpo de acordo com seu vetor de movimento
+	 */
+	public void move() {
+		this.x = this.VxGlobal;
+		this.y = this.VyGlobal;
+		updateGlobalVec();
+	}
+
+	public Pair<Double, Double> getPosition() {
+		return new Pair<>(this.x, this.y);
+	}
+
+	public Pair<Double, Double> getVector() {
+		return new Pair<>(this.Vx, this.Vy);
 	}
 
 	public Integer getMassa() {
@@ -93,6 +138,13 @@ public class Body {
 	public String toString() {
 		return "Body [x=" + x + ", y=" + y + ", Vx=" + Vx + ", Vy=" + Vy + ", index=" + index + ", name=" + name
 				+ ", massa=" + massa + "]";
+	}
+
+	private void updateGlobalVec() {
+		final Pair<Double, Double> p = Physics.localToGlobalVector(new Pair<Double, Double>(this.x, this.y),
+				new Pair<Double, Double>(this.Vx, this.Vy));
+		this.VxGlobal = p.getKey();
+		this.VyGlobal = p.getValue();
 	}
 
 }
