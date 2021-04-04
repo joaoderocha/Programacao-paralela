@@ -15,18 +15,18 @@ import java.util.stream.Collectors;
 import javafx.util.Pair;
 
 public class Main {
-	private static Integer bodySize = 3;
+	private static Integer bodySize = 300;
 	private static Integer environmentMaxMassSize = 750000;
 	private static Integer environmentMinMassSize = 300000;
-	private static Integer numberOfIterations = 3;
+	private static Integer numberOfIterations = 30;
 
-	public static void main(final String[] args) {
+	public static void main(final String[] args) throws Exception {
 		final Set<Body> bodys = new HashSet<>(bodySize);
 
 		for (int i = 0; i < bodySize; i++) {
 			final Pair<Double, Double> position = Physics.generateRandomVector();
 			final Pair<Double, Double> vector = Physics.generateRandomVector();
-			final Integer mass = generateMass(environmentMaxMassSize, environmentMinMassSize);
+			final Double mass = generateMass(environmentMaxMassSize, environmentMinMassSize);
 			final String nome = generateNome();
 
 			bodys.add(new Body(position.getKey(), position.getValue(), vector.getKey(), vector.getValue(), i, nome,
@@ -38,7 +38,7 @@ public class Main {
 		runSystem(numberOfIterations, environment);
 	}
 
-	public static void runSystem(final Integer T, final Environment environment) {
+	public static void runSystem(final Integer T, final Environment environment) throws InterruptedException {
 		final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 		for (int i = 0; i < T; i++) {
@@ -49,25 +49,14 @@ public class Main {
 			final List<Future<Boolean>> futures = new LinkedList<>();
 
 			currentBodyStates.forEach(body -> {
-				final Callable<Boolean> fut = new Callable<Boolean>() {
-					@Override
-					public Boolean call() {
-						System.out.println("Calculando influencias de corpos sobre" + body + "\n");
-						calculaDestino(body);
-
-						return true;
-					}
-				};
-				futures.add(threadPool.submit(fut));
+//				System.out.println("Calculando influencias de corpos sobre" + body + "\n");
+				try {
+					//
+					body.setVector(Physics.calculateNewDirection(body, currentBodyStates));
+				} catch (final Exception e) {
+					e.printStackTrace();
+				}
 			});
-
-			final Boolean ok = syncronize(futures);
-
-			if (ok) {
-				System.out.println("Calculo de influencia ok");
-			}
-
-			futures.clear();
 
 			currentBodyStates.forEach(body -> {
 				final Callable<Boolean> fut = new Callable<Boolean>() {
@@ -83,10 +72,16 @@ public class Main {
 				futures.add(threadPool.submit(fut));
 			});
 
-			syncronize(futures);
+			final Boolean ok = syncronize(futures);
+
+			if (ok) {
+				System.out.println("Corpos movidos");
+			}
+
+			Environment.clearEmptyPositions();
 
 			System.out.println("Fim da iteracao T = " + i + "\n");
-			System.out.println(environment);
+//			System.out.println(environment);
 		}
 
 		threadPool.shutdown();
@@ -117,21 +112,21 @@ public class Main {
 
 	}
 
-	public static Integer generateMass(final Integer max, final Integer min) {
+	public static Double generateMass(final Integer max, final Integer min) {
 		final Random rand = new Random();
 
-		return rand.nextInt(max - min) + min;
+		return rand.nextDouble() * (max - min) + min;
 	}
 
 	public static String generateNome() {
 		final Random rnd = new Random();
+		final StringBuilder sb = new StringBuilder("");
 		final char a = (char) ('a' + rnd.nextInt(26));
 		final char b = (char) ('a' + rnd.nextInt(26));
-		final String Nome = new String();
-		Nome.concat(String.valueOf(a));
-		Nome.concat(String.valueOf(b));
+		sb.append(a);
+		sb.append(b);
 
-		return Nome;
+		return sb.toString();
 	}
 
 }

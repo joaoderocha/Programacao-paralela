@@ -7,7 +7,6 @@ public class Sector {
 	ConcurrentLinkedDeque<Body> corpos = new ConcurrentLinkedDeque<>();
 
 	public Sector() {
-		super();
 	}
 
 	public Deque<Body> getCorpos() {
@@ -16,6 +15,10 @@ public class Sector {
 
 	public void insertOnSector(final Body corpo) {
 		corpos.offer(corpo);
+	}
+
+	public void removeFromSector(final Body corpo) {
+		corpos.remove(corpo);
 	}
 
 }

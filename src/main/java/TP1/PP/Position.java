@@ -13,7 +13,22 @@ public class Position {
 	Position(final Double x, final Double y, final Body[] bodies) {
 		this.x = x;
 		this.y = y;
-		this.counter = bodies.length;
+		for (final Body body : bodies) {
+			if (body != null) {
+				counter++;
+			}
+		}
+		this.corpos = bodies;
+	}
+
+	Position(final Pair<Double, Double> destino, final Body[] bodies) {
+		this.x = destino.getKey();
+		this.y = destino.getValue();
+		for (final Body body : bodies) {
+			if (body != null) {
+				counter++;
+			}
+		}
 		this.corpos = bodies;
 	}
 
@@ -32,8 +47,16 @@ public class Position {
 
 	}
 
+	public Integer getCounter() {
+		return this.counter;
+	}
+
+	public Body[] getBodies() {
+		return this.corpos;
+	}
+
 	public Boolean isEmpty() {
-		return corpos.length == 0;
+		return counter == 0;
 	}
 
 	@Override

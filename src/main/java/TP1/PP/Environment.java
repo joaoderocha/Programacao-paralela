@@ -11,9 +11,9 @@ import javafx.util.Pair;
 
 public final class Environment {
 	private static Environment environment;
-	private static ConcurrentHashMap<Pair<Double, Double>, Body[]> environmentMesh = new ConcurrentHashMap<>();
+	private static ConcurrentHashMap<Pair<Double, Double>, Position> environmentMesh = new ConcurrentHashMap<>();
 	private static HashMap<String, Sector> currentIterationBodies = new HashMap<>();
-	private static Integer bodySetSize = 0;
+	private static Integer bodySetSize = Integer.valueOf(0);
 
 	private Environment(final Set<Body> bodys) {
 		Environment.bodySetSize = bodys.size();
@@ -21,12 +21,11 @@ public final class Environment {
 
 		bodys.forEach((body) -> {
 			final Body[] arrayBody = new Body[bodySetSize];
-
-			final Pair<Double, Double> destino = new Pair<>(body.getX(), body.getY());
-			final String sector = defineBodySector(body);
+			final Position p = new Position(body.getX(), body.getY(), arrayBody);
+			final String sector = definePositionSector(body.getPosition());
 			currentIterationBodies.get(sector).insertOnSector(body);
-			environmentMesh.put(destino, arrayBody);
-			environmentMesh.get(destino)[body.getIndex()] = body;
+			p.insert(body);
+			environmentMesh.put(p.getPosition(), p);
 		});
 	}
 
@@ -38,7 +37,7 @@ public final class Environment {
 		return new Environment(bodys);
 	}
 
-	public static ConcurrentMap<Pair<Double, Double>, Body[]> getEnvironmentMesh() {
+	public static ConcurrentMap<Pair<Double, Double>, Position> getEnvironmentMesh() {
 		return Environment.environmentMesh;
 	}
 
@@ -51,38 +50,56 @@ public final class Environment {
 		return result;
 	}
 
-	// colocar pra limpar dinamicamente
 	public static void moveBody(final Body body) {
 		final Pair<Double, Double> oldPosition = body.getPosition();
 		body.move();
 		final Pair<Double, Double> destino = body.getPosition();
 		final Integer index = body.getIndex();
+		final Boolean shouldChangeSector = !sameSector(oldPosition, destino);
 
 		if (environmentMesh.containsKey(destino)) {
-			environmentMesh.get(oldPosition)[index] = null;
-			environmentMesh.get(destino)[index] = body;
+			environmentMesh.get(oldPosition).remove(index);
+			environmentMesh.get(destino).insert(body);
+
+			if (Boolean.TRUE.equals(shouldChangeSector)) {
+				moveSector(oldPosition, destino, body);
+			}
 
 			return;
 		}
 
 		final Body[] arrayBody = new Body[bodySetSize];
+		final Position p = new Position(destino, arrayBody);
 
-		environmentMesh.putIfAbsent(destino, arrayBody);
+		environmentMesh.putIfAbsent(destino, p);
 
 		if (environmentMesh.containsKey(destino)) {
-			environmentMesh.get(oldPosition)[index] = null;
-			environmentMesh.get(destino)[index] = body;
+			environmentMesh.get(oldPosition).remove(index);
+			environmentMesh.get(destino).insert(body);
 
+			if (Boolean.TRUE.equals(shouldChangeSector)) {
+				moveSector(oldPosition, destino, body);
+			}
 		}
+	}
+
+	public static void clearEmptyPositions() {
+		final Long numberOfElements = environmentMesh.mappingCount();
+		environmentMesh.forEach(numberOfElements, (key, value) -> {
+			if (value.isEmpty()) {
+				environmentMesh.remove(key);
+			}
+		});
 	}
 
 	@Override
 	public String toString() {
 		final StringBuilder resp = new StringBuilder("");
-		environmentMesh.forEach((posicao, arrayCorpos) -> {
+		environmentMesh.forEach((posicao, p) -> {
 			resp.append("Posicao x: " + posicao.getKey() + "\tPosicao y: " + posicao.getValue() + "\nCorpos:[\n");
-			for (int i = 0; i < arrayCorpos.length; i++) {
-				resp.append("\t" + arrayCorpos[i] + ",\n");
+			final Body[] b = p.getBodies();
+			for (int i = 0; i < b.length; i++) {
+				resp.append("\t" + b[i] + ",\n");
 			}
 
 			resp.append("\n]\n");
@@ -91,12 +108,12 @@ public final class Environment {
 		return resp.toString();
 	}
 
-	public static String defineBodySector(final Body body) {
-		if (body.getX() >= 0) {
-			return body.getY() >= 0 ? "Q1" : "Q4";
+	public static String definePositionSector(final Pair<Double, Double> position) {
+		if (position.getKey() >= 0) {
+			return position.getValue() >= 0 ? "Q1" : "Q4";
 		}
 
-		return body.getY() >= 0 ? "Q2" : "Q3";
+		return position.getValue() >= 0 ? "Q2" : "Q3";
 	}
 
 	public static void createSectors() {
@@ -104,5 +121,20 @@ public final class Environment {
 		currentIterationBodies.put("Q2", new Sector());
 		currentIterationBodies.put("Q3", new Sector());
 		currentIterationBodies.put("Q4", new Sector());
+	}
+
+	public static Boolean sameSector(final Pair<Double, Double> a, final Pair<Double, Double> b) {
+		return Math.signum(a.getKey()) == Math.signum(b.getKey())
+				&& Math.signum(a.getValue()) == Math.signum(b.getValue());
+
+	}
+
+	public static void moveSector(final Pair<Double, Double> oldPosition, final Pair<Double, Double> destiny,
+			final Body body) {
+		System.out.println("Mudei de setor: " + body);
+		final String oldSector = definePositionSector(oldPosition);
+		final String newSector = definePositionSector(destiny);
+		currentIterationBodies.get(oldSector).removeFromSector(body);
+		currentIterationBodies.get(newSector).insertOnSector(body);
 	}
 }
