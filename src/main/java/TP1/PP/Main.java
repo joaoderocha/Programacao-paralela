@@ -15,10 +15,10 @@ import java.util.stream.Collectors;
 import javafx.util.Pair;
 
 public class Main {
-	private static Integer bodySize = 300;
+	private static Integer bodySize = 30;
 	private static Integer environmentMaxMassSize = 750000;
 	private static Integer environmentMinMassSize = 300000;
-	private static Integer numberOfIterations = 30;
+	private static Integer numberOfIterations = 3;
 
 	public static void main(final String[] args) throws Exception {
 		final Set<Body> bodys = new HashSet<>(bodySize);
@@ -81,7 +81,7 @@ public class Main {
 			Environment.clearEmptyPositions();
 
 			System.out.println("Fim da iteracao T = " + i + "\n");
-//			System.out.println(environment);
+			System.out.println(environment);
 		}
 
 		threadPool.shutdown();

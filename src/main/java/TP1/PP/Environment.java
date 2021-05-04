@@ -99,7 +99,9 @@ public final class Environment {
 			resp.append("Posicao x: " + posicao.getKey() + "\tPosicao y: " + posicao.getValue() + "\nCorpos:[\n");
 			final Body[] b = p.getBodies();
 			for (int i = 0; i < b.length; i++) {
-				resp.append("\t" + b[i] + ",\n");
+				if (b != null) {
+					resp.append("\t" + b[i] + ",\n");
+				}
 			}
 
 			resp.append("\n]\n");
